@@ -3,9 +3,9 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Flight Companion"
         Width="980"
-        Height="720"
+        Height="860"
         MinWidth="850"
-        MinHeight="650"
+        MinHeight="760"
         Background="#101410"
         WindowStartupLocation="CenterScreen">
 
@@ -21,347 +21,210 @@
             <Setter Property="Padding" Value="10"/>
         </Style>
 
+        <Style x:Key="SectionLabelStyle"
+               TargetType="TextBlock">
+            <Setter Property="Foreground"
+                    Value="#A9B8AC"/>
+            <Setter Property="FontFamily"
+                    Value="Consolas"/>
+            <Setter Property="FontSize"
+                    Value="14"/>
+        </Style>
+
+        <Style x:Key="SectionValueStyle"
+               TargetType="TextBlock">
+            <Setter Property="Foreground"
+                    Value="#72FF8F"/>
+            <Setter Property="FontFamily"
+                    Value="Consolas"/>
+            <Setter Property="FontSize"
+                    Value="20"/>
+            <Setter Property="FontWeight"
+                    Value="Bold"/>
+            <Setter Property="Margin"
+                    Value="0,6,0,0"/>
+        </Style>
+
     </Window.Resources>
 
-    <Grid Margin="24">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
 
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="18"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="18"/>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="18"/>
-            <RowDefinition Height="Auto"/>
-        </Grid.RowDefinitions>
+        <Grid Margin="24">
 
-        <!-- En-tête -->
-        <Grid Grid.Row="0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="18"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="18"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="18"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="18"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
 
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="Auto"/>
-            </Grid.ColumnDefinitions>
-
-            <StackPanel>
-
-                <TextBlock Text="✈ FLIGHT COMPANION"
-                           Foreground="#72FF8F"
-                           FontFamily="Consolas"
-                           FontSize="38"
-                           FontWeight="Bold"/>
-
-                <TextBlock Text="Microsoft Flight Simulator 2024"
-                           Foreground="#85A58C"
-                           FontFamily="Consolas"
-                           FontSize="15"
-                           Margin="2,5,0,0"/>
-
-                <TextBlock x:Name="AircraftText"
-                           Text="Avion : ---"
-                           Foreground="#91A797"
-                           FontFamily="Consolas"
-                           FontSize="14"
-                           Margin="2,4,0,0"/>
-
-                <TextBlock x:Name="AircraftProfileText"
-                           Text="Profil : ---"
-                           Foreground="#91A797"
-                           FontFamily="Consolas"
-                           FontSize="14"
-                           TextWrapping="Wrap"
-                           Margin="2,4,0,0"/>
-
-            </StackPanel>
-
-            <Border Grid.Column="1"
-                    Background="#1D281F"
-                    BorderBrush="#386742"
-                    BorderThickness="1"
-                    CornerRadius="10"
-                    Padding="16,10"
-                    VerticalAlignment="Center">
-
-                <TextBlock x:Name="StatusText"
-                           Text="● Non connecté"
-                           Foreground="Orange"
-                           FontFamily="Consolas"
-                           FontSize="18"
-                           FontWeight="Bold"/>
-
-            </Border>
-
-        </Grid>
-
-        <!-- Données de vol -->
-        <Grid Grid.Row="2">
-
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="14"/>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="14"/>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="14"/>
-                <ColumnDefinition Width="*"/>
-            </Grid.ColumnDefinitions>
-
-            <Border Grid.Column="0"
-                    Background="#202620"
-                    BorderBrush="#38473B"
-                    BorderThickness="1"
-                    CornerRadius="12"
-                    Padding="18">
-
-                <StackPanel>
-
-                    <TextBlock Text="ALTITUDE"
-                               Foreground="#A9B8AC"
-                               FontFamily="Consolas"
-                               FontSize="14"/>
-
-                    <TextBlock x:Name="AltitudeText"
-                               Text="----- ft"
-                               Foreground="#72FF8F"
-                               FontFamily="Consolas"
-                               FontSize="29"
-                               FontWeight="Bold"
-                               Margin="0,10,0,0"/>
-
-                </StackPanel>
-
-            </Border>
-
-            <Border Grid.Column="2"
-                    Background="#202620"
-                    BorderBrush="#38473B"
-                    BorderThickness="1"
-                    CornerRadius="12"
-                    Padding="18">
-
-                <StackPanel>
-
-                    <TextBlock Text="VITESSE SOL"
-                               Foreground="#A9B8AC"
-                               FontFamily="Consolas"
-                               FontSize="14"/>
-
-                    <TextBlock x:Name="SpeedText"
-                               Text="----- kt"
-                               Foreground="#72FF8F"
-                               FontFamily="Consolas"
-                               FontSize="29"
-                               FontWeight="Bold"
-                               Margin="0,10,0,0"/>
-
-                </StackPanel>
-
-            </Border>
-
-            <Border Grid.Column="4"
-                    Background="#202620"
-                    BorderBrush="#38473B"
-                    BorderThickness="1"
-                    CornerRadius="12"
-                    Padding="18">
-
-                <StackPanel>
-
-                    <TextBlock Text="VITESSE VERTICALE"
-                               Foreground="#A9B8AC"
-                               FontFamily="Consolas"
-                               FontSize="14"/>
-
-                    <TextBlock x:Name="VSText"
-                               Text="----- ft/min"
-                               Foreground="#72FF8F"
-                               FontFamily="Consolas"
-                               FontSize="29"
-                               FontWeight="Bold"
-                               Margin="0,10,0,0"/>
-
-                </StackPanel>
-
-            </Border>
-
-            <Border Grid.Column="6"
-                    Background="#202620"
-                    BorderBrush="#38473B"
-                    BorderThickness="1"
-                    CornerRadius="12"
-                    Padding="18">
-
-                <StackPanel>
-
-                    <TextBlock Text="CAP VRAI"
-                               Foreground="#A9B8AC"
-                               FontFamily="Consolas"
-                               FontSize="14"/>
-
-                    <TextBlock x:Name="HeadingText"
-                               Text="---°"
-                               Foreground="#72FF8F"
-                               FontFamily="Consolas"
-                               FontSize="29"
-                               FontWeight="Bold"
-                               Margin="0,10,0,0"/>
-
-                </StackPanel>
-
-            </Border>
-
-        </Grid>
-
-        <!-- Calculateur -->
-        <Border Grid.Row="4"
-                Background="#202620"
-                BorderBrush="#386742"
-                BorderThickness="1"
-                CornerRadius="14"
-                Padding="24">
-
-            <Grid>
+            <!-- En-tête -->
+            <Grid Grid.Row="0">
 
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="1.15*"/>
-                    <ColumnDefinition Width="30"/>
-                    <ColumnDefinition Width="1*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
-                <!-- Saisie -->
-                <StackPanel Grid.Column="0">
+                <StackPanel>
 
-                    <TextBlock Text="CALCULATEUR DE DESCENTE"
+                    <TextBlock Text="✈ FLIGHT COMPANION"
                                Foreground="#72FF8F"
                                FontFamily="Consolas"
-                               FontSize="24"
+                               FontSize="38"
                                FontWeight="Bold"/>
 
-                    <TextBlock Text="Les données actuelles proviennent automatiquement de MSFS."
+                    <TextBlock Text="Microsoft Flight Simulator 2024"
+                               Foreground="#85A58C"
+                               FontFamily="Consolas"
+                               FontSize="15"
+                               Margin="2,5,0,0"/>
+
+                    <TextBlock x:Name="AircraftText"
+                               Text="Avion : ---"
                                Foreground="#91A797"
                                FontFamily="Consolas"
                                FontSize="14"
-                               Margin="0,8,0,24"/>
+                               Margin="2,4,0,0"/>
 
-                    <TextBlock Text="ALTITUDE CIBLE"
-                               Foreground="#DCE6DE"
-                               FontFamily="Consolas"
-                               FontSize="15"/>
-
-                    <Grid Margin="0,7,0,20">
-
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="55"/>
-                        </Grid.ColumnDefinitions>
-
-                        <TextBox x:Name="TargetAltitudeTextBox"
-                                 Text="700"
-                                 TextChanged="DescentInput_TextChanged"/>
-
-                        <TextBlock Grid.Column="1"
-                                   Text="ft"
-                                   Foreground="#72FF8F"
-                                   FontFamily="Consolas"
-                                   FontSize="18"
-                                   VerticalAlignment="Center"
-                                   Margin="12,0,0,0"/>
-
-                    </Grid>
-
-                    <TextBlock Text="DISTANCE RESTANTE"
-                               Foreground="#DCE6DE"
-                               FontFamily="Consolas"
-                               FontSize="15"/>
-
-                    <Grid Margin="0,7,0,22">
-
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="55"/>
-                        </Grid.ColumnDefinitions>
-
-                        <TextBox x:Name="DistanceTextBox"
-                                 Text="19"
-                                 TextChanged="DescentInput_TextChanged"/>
-
-                        <TextBlock Grid.Column="1"
-                                   Text="NM"
-                                   Foreground="#72FF8F"
-                                   FontFamily="Consolas"
-                                   FontSize="18"
-                                   VerticalAlignment="Center"
-                                   Margin="12,0,0,0"/>
-
-                    </Grid>
-
-                    <TextBlock Text="Le calcul se met à jour automatiquement."
+                    <TextBlock x:Name="AircraftProfileText"
+                               Text="Profil : ---"
                                Foreground="#91A797"
                                FontFamily="Consolas"
                                FontSize="14"
-                               Margin="0,6,0,0"/>
+                               TextWrapping="Wrap"
+                               Margin="2,4,0,0"/>
 
                 </StackPanel>
 
-                <!-- Résultats -->
-                <Border Grid.Column="2"
-                        Background="#111611"
+                <Border Grid.Column="1"
+                        Background="#1D281F"
                         BorderBrush="#386742"
                         BorderThickness="1"
+                        CornerRadius="10"
+                        Padding="16,10"
+                        VerticalAlignment="Center">
+
+                    <TextBlock x:Name="StatusText"
+                               Text="● Non connecté"
+                               Foreground="Orange"
+                               FontFamily="Consolas"
+                               FontSize="18"
+                               FontWeight="Bold"/>
+
+                </Border>
+
+            </Grid>
+
+            <!-- Données de vol -->
+            <Grid Grid.Row="2">
+
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="14"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="14"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="14"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <Border Grid.Column="0"
+                        Background="#202620"
+                        BorderBrush="#38473B"
+                        BorderThickness="1"
                         CornerRadius="12"
-                        Padding="24">
+                        Padding="18">
 
-                    <StackPanel VerticalAlignment="Center">
+                    <StackPanel>
 
-                        <TextBlock Text="VS CONSEILLÉ"
-                                   Foreground="#A9B8AC"
-                                   FontFamily="Consolas"
-                                   FontSize="17"
-                                   HorizontalAlignment="Center"/>
+                        <TextBlock Text="ALTITUDE"
+                                   Style="{StaticResource SectionLabelStyle}"/>
 
-                        <TextBlock x:Name="RecommendedVsText"
-                                   Text="--- ft/min"
+                        <TextBlock x:Name="AltitudeText"
+                                   Text="----- ft"
                                    Foreground="#72FF8F"
                                    FontFamily="Consolas"
-                                   FontSize="44"
+                                   FontSize="29"
                                    FontWeight="Bold"
-                                   TextAlignment="Center"
-                                   HorizontalAlignment="Center"
-                                   Margin="0,20,0,20"/>
-
-                        <TextBlock Text="TOP OF DESCENT"
-                                   Foreground="#A9B8AC"
-                                   FontFamily="Consolas"
-                                   FontSize="15"
-                                   HorizontalAlignment="Center"
                                    Margin="0,10,0,0"/>
 
-                        <TextBlock x:Name="TodDistanceText"
-                                   Text="--- NM"
+                    </StackPanel>
+
+                </Border>
+
+                <Border Grid.Column="2"
+                        Background="#202620"
+                        BorderBrush="#38473B"
+                        BorderThickness="1"
+                        CornerRadius="12"
+                        Padding="18">
+
+                    <StackPanel>
+
+                        <TextBlock Text="VITESSE SOL"
+                                   Style="{StaticResource SectionLabelStyle}"/>
+
+                        <TextBlock x:Name="SpeedText"
+                                   Text="----- kt"
                                    Foreground="#72FF8F"
                                    FontFamily="Consolas"
-                                   FontSize="30"
+                                   FontSize="29"
                                    FontWeight="Bold"
-                                   HorizontalAlignment="Center"
-                                   Margin="0,8,0,0"/>
+                                   Margin="0,10,0,0"/>
 
-                        <TextBlock x:Name="TodTimeText"
-                                   Text="--- min"
-                                   Foreground="#91A797"
-                                   FontFamily="Consolas"
-                                   FontSize="17"
-                                   HorizontalAlignment="Center"
-                                   Margin="0,4,0,18"/>
+                    </StackPanel>
 
-                        <TextBlock x:Name="DescentAdviceText"
-                                   Text="En attente des données"
-                                   Foreground="Orange"
+                </Border>
+
+                <Border Grid.Column="4"
+                        Background="#202620"
+                        BorderBrush="#38473B"
+                        BorderThickness="1"
+                        CornerRadius="12"
+                        Padding="18">
+
+                    <StackPanel>
+
+                        <TextBlock Text="VITESSE VERTICALE"
+                                   Style="{StaticResource SectionLabelStyle}"/>
+
+                        <TextBlock x:Name="VSText"
+                                   Text="----- ft/min"
+                                   Foreground="#72FF8F"
                                    FontFamily="Consolas"
-                                   FontSize="18"
+                                   FontSize="29"
                                    FontWeight="Bold"
-                                   TextAlignment="Center"
-                                   TextWrapping="Wrap"
-                                   HorizontalAlignment="Center"/>
+                                   Margin="0,10,0,0"/>
+
+                    </StackPanel>
+
+                </Border>
+
+                <Border Grid.Column="6"
+                        Background="#202620"
+                        BorderBrush="#38473B"
+                        BorderThickness="1"
+                        CornerRadius="12"
+                        Padding="18">
+
+                    <StackPanel>
+
+                        <TextBlock Text="CAP VRAI"
+                                   Style="{StaticResource SectionLabelStyle}"/>
+
+                        <TextBlock x:Name="HeadingText"
+                                   Text="---°"
+                                   Foreground="#72FF8F"
+                                   FontFamily="Consolas"
+                                   FontSize="29"
+                                   FontWeight="Bold"
+                                   Margin="0,10,0,0"/>
 
                     </StackPanel>
 
@@ -369,15 +232,283 @@
 
             </Grid>
 
-        </Border>
+            <!-- Plan de vol GPS -->
+            <Border Grid.Row="4"
+                    Background="#202620"
+                    BorderBrush="#386742"
+                    BorderThickness="1"
+                    CornerRadius="12"
+                    Padding="20">
 
-        <TextBlock Grid.Row="6"
-                   Text="Le résultat suppose une vitesse sol et une descente constantes."
-                   Foreground="#77867A"
-                   FontFamily="Consolas"
-                   FontSize="13"
-                   HorizontalAlignment="Center"/>
+                <Grid>
 
-    </Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="20"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="20"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Plan -->
+                    <StackPanel Grid.Column="0">
+
+                        <TextBlock Text="PLAN DE VOL"
+                                   Foreground="#72FF8F"
+                                   FontFamily="Consolas"
+                                   FontSize="20"
+                                   FontWeight="Bold"/>
+
+                        <TextBlock x:Name="FlightPlanStatusText"
+                                   Text="Plan actif : ---"
+                                   Style="{StaticResource SectionValueStyle}"/>
+
+                        <TextBlock x:Name="WaypointText"
+                                   Text="Waypoint : ---"
+                                   Style="{StaticResource SectionValueStyle}"/>
+
+                        <TextBlock x:Name="WaypointProgressText"
+                                   Text="Progression : --- / ---"
+                                   Foreground="#91A797"
+                                   FontFamily="Consolas"
+                                   FontSize="15"
+                                   Margin="0,6,0,0"/>
+
+                    </StackPanel>
+
+                    <!-- Navigation -->
+                    <StackPanel Grid.Column="2">
+
+                        <TextBlock Text="NAVIGATION GPS"
+                                   Foreground="#72FF8F"
+                                   FontFamily="Consolas"
+                                   FontSize="20"
+                                   FontWeight="Bold"/>
+
+                        <TextBlock x:Name="GpsDistanceText"
+                                   Text="Distance restante : --- NM"
+                                   Style="{StaticResource SectionValueStyle}"/>
+
+                        <TextBlock x:Name="NextWaypointDistanceText"
+                                   Text="Prochain waypoint : --- NM"
+                                   Foreground="#91A797"
+                                   FontFamily="Consolas"
+                                   FontSize="15"
+                                   Margin="0,6,0,0"/>
+
+                        <TextBlock x:Name="GpsTimeText"
+                                   Text="Temps restant : ---"
+                                   Foreground="#91A797"
+                                   FontFamily="Consolas"
+                                   FontSize="15"
+                                   Margin="0,6,0,0"/>
+
+                    </StackPanel>
+
+                    <!-- TOD GPS -->
+                    <StackPanel Grid.Column="4">
+
+                        <TextBlock Text="TOD AUTOMATIQUE"
+                                   Foreground="#72FF8F"
+                                   FontFamily="Consolas"
+                                   FontSize="20"
+                                   FontWeight="Bold"/>
+
+                        <TextBlock x:Name="GpsTodStatusText"
+                                   Text="En attente..."
+                                   Style="{StaticResource SectionValueStyle}"
+                                   TextWrapping="Wrap"/>
+
+                        <TextBlock x:Name="GpsSourceText"
+                                   Text="Source : saisie manuelle"
+                                   Foreground="#91A797"
+                                   FontFamily="Consolas"
+                                   FontSize="15"
+                                   Margin="0,6,0,0"/>
+
+                    </StackPanel>
+
+                </Grid>
+
+            </Border>
+
+            <!-- Calculateur -->
+            <Border Grid.Row="6"
+                    Background="#202620"
+                    BorderBrush="#386742"
+                    BorderThickness="1"
+                    CornerRadius="14"
+                    Padding="24">
+
+                <Grid>
+
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="1.15*"/>
+                        <ColumnDefinition Width="30"/>
+                        <ColumnDefinition Width="1*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Saisie -->
+                    <StackPanel Grid.Column="0">
+
+                        <TextBlock Text="CALCULATEUR DE DESCENTE"
+                                   Foreground="#72FF8F"
+                                   FontFamily="Consolas"
+                                   FontSize="24"
+                                   FontWeight="Bold"/>
+
+                        <TextBlock Text="Les données actuelles proviennent automatiquement de MSFS."
+                                   Foreground="#91A797"
+                                   FontFamily="Consolas"
+                                   FontSize="14"
+                                   Margin="0,8,0,24"/>
+
+                        <TextBlock Text="ALTITUDE CIBLE"
+                                   Foreground="#DCE6DE"
+                                   FontFamily="Consolas"
+                                   FontSize="15"/>
+
+                        <Grid Margin="0,7,0,20">
+
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="55"/>
+                            </Grid.ColumnDefinitions>
+
+                            <TextBox x:Name="TargetAltitudeTextBox"
+                                     Text="700"
+                                     TextChanged="DescentInput_TextChanged"/>
+
+                            <TextBlock Grid.Column="1"
+                                       Text="ft"
+                                       Foreground="#72FF8F"
+                                       FontFamily="Consolas"
+                                       FontSize="18"
+                                       VerticalAlignment="Center"
+                                       Margin="12,0,0,0"/>
+
+                        </Grid>
+
+                        <TextBlock Text="DISTANCE RESTANTE"
+                                   Foreground="#DCE6DE"
+                                   FontFamily="Consolas"
+                                   FontSize="15"/>
+
+                        <Grid Margin="0,7,0,22">
+
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="55"/>
+                            </Grid.ColumnDefinitions>
+
+                            <TextBox x:Name="DistanceTextBox"
+                                     Text="19"
+                                     TextChanged="DescentInput_TextChanged"/>
+
+                            <TextBlock Grid.Column="1"
+                                       Text="NM"
+                                       Foreground="#72FF8F"
+                                       FontFamily="Consolas"
+                                       FontSize="18"
+                                       VerticalAlignment="Center"
+                                       Margin="12,0,0,0"/>
+
+                        </Grid>
+
+                        <CheckBox x:Name="UseGpsDistanceCheckBox"
+                                  Content="Utiliser automatiquement la distance GPS"
+                                  Foreground="#DCE6DE"
+                                  FontFamily="Consolas"
+                                  FontSize="15"
+                                  Checked="UseGpsDistanceCheckBox_Changed"
+                                  Unchecked="UseGpsDistanceCheckBox_Changed"
+                                  Margin="0,4,0,0"/>
+
+                        <TextBlock Text="Le calcul se met à jour automatiquement."
+                                   Foreground="#91A797"
+                                   FontFamily="Consolas"
+                                   FontSize="14"
+                                   Margin="0,10,0,0"/>
+
+                    </StackPanel>
+
+                    <!-- Résultats -->
+                    <Border Grid.Column="2"
+                            Background="#111611"
+                            BorderBrush="#386742"
+                            BorderThickness="1"
+                            CornerRadius="12"
+                            Padding="24">
+
+                        <StackPanel VerticalAlignment="Center">
+
+                            <TextBlock Text="VS CONSEILLÉ"
+                                       Foreground="#A9B8AC"
+                                       FontFamily="Consolas"
+                                       FontSize="17"
+                                       HorizontalAlignment="Center"/>
+
+                            <TextBlock x:Name="RecommendedVsText"
+                                       Text="--- ft/min"
+                                       Foreground="#72FF8F"
+                                       FontFamily="Consolas"
+                                       FontSize="44"
+                                       FontWeight="Bold"
+                                       TextAlignment="Center"
+                                       HorizontalAlignment="Center"
+                                       Margin="0,20,0,20"/>
+
+                            <TextBlock Text="TOP OF DESCENT"
+                                       Foreground="#A9B8AC"
+                                       FontFamily="Consolas"
+                                       FontSize="15"
+                                       HorizontalAlignment="Center"
+                                       Margin="0,10,0,0"/>
+
+                            <TextBlock x:Name="TodDistanceText"
+                                       Text="--- NM"
+                                       Foreground="#72FF8F"
+                                       FontFamily="Consolas"
+                                       FontSize="30"
+                                       FontWeight="Bold"
+                                       HorizontalAlignment="Center"
+                                       Margin="0,8,0,0"/>
+
+                            <TextBlock x:Name="TodTimeText"
+                                       Text="--- min"
+                                       Foreground="#91A797"
+                                       FontFamily="Consolas"
+                                       FontSize="17"
+                                       HorizontalAlignment="Center"
+                                       Margin="0,4,0,18"/>
+
+                            <TextBlock x:Name="DescentAdviceText"
+                                       Text="En attente des données"
+                                       Foreground="Orange"
+                                       FontFamily="Consolas"
+                                       FontSize="18"
+                                       FontWeight="Bold"
+                                       TextAlignment="Center"
+                                       TextWrapping="Wrap"
+                                       HorizontalAlignment="Center"/>
+
+                        </StackPanel>
+
+                    </Border>
+
+                </Grid>
+
+            </Border>
+
+            <TextBlock Grid.Row="8"
+                       Text="Le résultat suppose une vitesse sol et une descente constantes."
+                       Foreground="#77867A"
+                       FontFamily="Consolas"
+                       FontSize="13"
+                       HorizontalAlignment="Center"/>
+
+        </Grid>
+
+    </ScrollViewer>
 
 </Window>

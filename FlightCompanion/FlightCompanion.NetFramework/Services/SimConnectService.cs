@@ -9,8 +9,14 @@ namespace FlightCompanion.NetFramework.Services
     {
         public const int WindowMessageId = 0x0402;
 
+        private const double MetersPerNauticalMile = 1852.0;
+
         private SimConnect simConnect;
+
         private string currentAircraftTitle = string.Empty;
+        private string currentNextWaypointId = string.Empty;
+
+        private RawNavigationData currentNavigationData;
 
         public event Action Connected;
         public event Action<string> Disconnected;
@@ -20,13 +26,17 @@ namespace FlightCompanion.NetFramework.Services
         private enum Definitions
         {
             FlightData,
-            AircraftTitle
+            AircraftTitle,
+            NavigationData,
+            NextWaypointId
         }
 
         private enum Requests
         {
             FlightData,
-            AircraftTitle
+            AircraftTitle,
+            NavigationData,
+            NextWaypointId
         }
 
         [StructLayout(LayoutKind.Sequential, Pack = 1)]
@@ -36,6 +46,16 @@ namespace FlightCompanion.NetFramework.Services
             public double GroundSpeedKnots;
             public double VerticalSpeedFeetPerSecond;
             public double HeadingRadians;
+        }
+
+        [StructLayout(LayoutKind.Sequential, Pack = 1)]
+        private struct RawNavigationData
+        {
+            public int HasActiveFlightPlan;
+            public double EteSeconds;
+            public double NextWaypointDistanceMeters;
+            public int ActiveWaypointIndex;
+            public int WaypointCount;
         }
 
         [StructLayout(
@@ -48,6 +68,18 @@ namespace FlightCompanion.NetFramework.Services
                 UnmanagedType.ByValTStr,
                 SizeConst = 256)]
             public string Title;
+        }
+
+        [StructLayout(
+            LayoutKind.Sequential,
+            CharSet = CharSet.Ansi,
+            Pack = 1)]
+        private struct RawNextWaypointId
+        {
+            [MarshalAs(
+                UnmanagedType.ByValTStr,
+                SizeConst = 256)]
+            public string Id;
         }
 
         public void Connect(IntPtr windowHandle)
@@ -74,11 +106,7 @@ namespace FlightCompanion.NetFramework.Services
             catch (Exception exception)
             {
                 DisconnectInternal();
-
-                if (Disconnected != null)
-                {
-                    Disconnected(exception.Message);
-                }
+                RaiseDisconnected(exception.Message);
             }
         }
 
@@ -96,11 +124,7 @@ namespace FlightCompanion.NetFramework.Services
             catch (Exception exception)
             {
                 DisconnectInternal();
-
-                if (Disconnected != null)
-                {
-                    Disconnected(exception.Message);
-                }
+                RaiseDisconnected(exception.Message);
             }
         }
 
@@ -108,7 +132,7 @@ namespace FlightCompanion.NetFramework.Services
             SimConnect sender,
             SIMCONNECT_RECV_OPEN data)
         {
-            ConfigureFlightData();
+            ConfigureDataDefinitions();
 
             if (Connected != null)
             {
@@ -116,13 +140,21 @@ namespace FlightCompanion.NetFramework.Services
             }
         }
 
-        private void ConfigureFlightData()
+        private void ConfigureDataDefinitions()
         {
             if (simConnect == null)
             {
                 return;
             }
 
+            ConfigureFlightData();
+            ConfigureAircraftTitle();
+            ConfigureNavigationData();
+            ConfigureNextWaypointId();
+        }
+
+        private void ConfigureFlightData()
+        {
             simConnect.AddToDataDefinition(
                 Definitions.FlightData,
                 "INDICATED ALTITUDE",
@@ -167,7 +199,10 @@ namespace FlightCompanion.NetFramework.Services
                 0,
                 0,
                 0);
+        }
 
+        private void ConfigureAircraftTitle()
+        {
             simConnect.AddToDataDefinition(
                 Definitions.AircraftTitle,
                 "TITLE",
@@ -190,11 +225,92 @@ namespace FlightCompanion.NetFramework.Services
                 0);
         }
 
+        private void ConfigureNavigationData()
+        {
+            simConnect.AddToDataDefinition(
+                Definitions.NavigationData,
+                "GPS IS ACTIVE FLIGHT PLAN",
+                "Bool",
+                SIMCONNECT_DATATYPE.INT32,
+                0,
+                SimConnect.SIMCONNECT_UNUSED);
+
+            simConnect.AddToDataDefinition(
+                Definitions.NavigationData,
+                "GPS ETE",
+                "seconds",
+                SIMCONNECT_DATATYPE.FLOAT64,
+                0,
+                SimConnect.SIMCONNECT_UNUSED);
+
+            simConnect.AddToDataDefinition(
+                Definitions.NavigationData,
+                "GPS WP DISTANCE",
+                "meters",
+                SIMCONNECT_DATATYPE.FLOAT64,
+                0,
+                SimConnect.SIMCONNECT_UNUSED);
+
+            simConnect.AddToDataDefinition(
+                Definitions.NavigationData,
+                "GPS FLIGHT PLAN WP INDEX",
+                "number",
+                SIMCONNECT_DATATYPE.INT32,
+                0,
+                SimConnect.SIMCONNECT_UNUSED);
+
+            simConnect.AddToDataDefinition(
+                Definitions.NavigationData,
+                "GPS FLIGHT PLAN WP COUNT",
+                "number",
+                SIMCONNECT_DATATYPE.INT32,
+                0,
+                SimConnect.SIMCONNECT_UNUSED);
+
+            simConnect.RegisterDataDefineStruct<RawNavigationData>(
+                Definitions.NavigationData);
+
+            simConnect.RequestDataOnSimObject(
+                Requests.NavigationData,
+                Definitions.NavigationData,
+                SimConnect.SIMCONNECT_OBJECT_ID_USER,
+                SIMCONNECT_PERIOD.SECOND,
+                SIMCONNECT_DATA_REQUEST_FLAG.DEFAULT,
+                0,
+                0,
+                0);
+        }
+
+        private void ConfigureNextWaypointId()
+        {
+            simConnect.AddToDataDefinition(
+                Definitions.NextWaypointId,
+                "GPS WP NEXT ID",
+                null,
+                SIMCONNECT_DATATYPE.STRING256,
+                0,
+                SimConnect.SIMCONNECT_UNUSED);
+
+            simConnect.RegisterDataDefineStruct<RawNextWaypointId>(
+                Definitions.NextWaypointId);
+
+            simConnect.RequestDataOnSimObject(
+                Requests.NextWaypointId,
+                Definitions.NextWaypointId,
+                SimConnect.SIMCONNECT_OBJECT_ID_USER,
+                SIMCONNECT_PERIOD.SECOND,
+                SIMCONNECT_DATA_REQUEST_FLAG.DEFAULT,
+                0,
+                0,
+                0);
+        }
+
         private void OnRecvSimobjectData(
             SimConnect sender,
             SIMCONNECT_RECV_SIMOBJECT_DATA data)
         {
-            if (data.dwData.Length == 0)
+            if (data.dwData == null ||
+                data.dwData.Length == 0)
             {
                 return;
             }
@@ -202,22 +318,56 @@ namespace FlightCompanion.NetFramework.Services
             Requests request =
                 (Requests)data.dwRequestID;
 
-            if (request == Requests.AircraftTitle)
+            switch (request)
             {
-                RawAircraftTitle aircraftData =
-                    (RawAircraftTitle)data.dwData[0];
+                case Requests.AircraftTitle:
+                    ReceiveAircraftTitle(data);
+                    break;
 
-                currentAircraftTitle =
-                    aircraftData.Title ?? string.Empty;
+                case Requests.NavigationData:
+                    ReceiveNavigationData(data);
+                    break;
 
-                return;
+                case Requests.NextWaypointId:
+                    ReceiveNextWaypointId(data);
+                    break;
+
+                case Requests.FlightData:
+                    ReceiveFlightData(data);
+                    break;
             }
+        }
 
-            if (request != Requests.FlightData)
-            {
-                return;
-            }
+        private void ReceiveAircraftTitle(
+            SIMCONNECT_RECV_SIMOBJECT_DATA data)
+        {
+            RawAircraftTitle aircraft =
+                (RawAircraftTitle)data.dwData[0];
 
+            currentAircraftTitle =
+                aircraft.Title ?? string.Empty;
+        }
+
+        private void ReceiveNavigationData(
+            SIMCONNECT_RECV_SIMOBJECT_DATA data)
+        {
+            currentNavigationData =
+                (RawNavigationData)data.dwData[0];
+        }
+
+        private void ReceiveNextWaypointId(
+            SIMCONNECT_RECV_SIMOBJECT_DATA data)
+        {
+            RawNextWaypointId waypoint =
+                (RawNextWaypointId)data.dwData[0];
+
+            currentNextWaypointId =
+                waypoint.Id ?? string.Empty;
+        }
+
+        private void ReceiveFlightData(
+            SIMCONNECT_RECV_SIMOBJECT_DATA data)
+        {
             RawFlightData rawData =
                 (RawFlightData)data.dwData[0];
 
@@ -229,6 +379,26 @@ namespace FlightCompanion.NetFramework.Services
             headingDegrees =
                 (headingDegrees + 360.0) %
                 360.0;
+
+            bool hasFlightPlan =
+                currentNavigationData.HasActiveFlightPlan != 0;
+
+            double estimatedRemainingDistanceNm = 0;
+
+            /*
+             * GPS ETE donne le temps estimé restant jusqu’à
+             * la destination. Nous estimons la distance restante
+             * à partir de la vitesse sol actuelle.
+             */
+            if (hasFlightPlan &&
+                currentNavigationData.EteSeconds > 0 &&
+                rawData.GroundSpeedKnots > 0)
+            {
+                estimatedRemainingDistanceNm =
+                    rawData.GroundSpeedKnots *
+                    currentNavigationData.EteSeconds /
+                    3600.0;
+            }
 
             FlightData flightData =
                 new FlightData
@@ -247,7 +417,30 @@ namespace FlightCompanion.NetFramework.Services
                         headingDegrees,
 
                     AircraftTitle =
-                        currentAircraftTitle
+                        currentAircraftTitle,
+
+                    HasActiveFlightPlan =
+                        hasFlightPlan,
+
+                    GpsDistanceRemainingNm =
+                        estimatedRemainingDistanceNm,
+
+                    GpsEteSeconds =
+                        currentNavigationData.EteSeconds,
+
+                    ActiveWaypointIndex =
+                        currentNavigationData.ActiveWaypointIndex,
+
+                    WaypointCount =
+                        currentNavigationData.WaypointCount,
+
+                    NextWaypointId =
+                        currentNextWaypointId,
+
+                    NextWaypointDistanceNm =
+                        currentNavigationData
+                            .NextWaypointDistanceMeters /
+                        MetersPerNauticalMile
                 };
 
             if (FlightDataReceived != null)
@@ -261,11 +454,7 @@ namespace FlightCompanion.NetFramework.Services
             SIMCONNECT_RECV data)
         {
             DisconnectInternal();
-
-            if (Disconnected != null)
-            {
-                Disconnected("MSFS a été fermé.");
-            }
+            RaiseDisconnected("MSFS a été fermé.");
         }
 
         private void OnRecvException(
@@ -280,24 +469,34 @@ namespace FlightCompanion.NetFramework.Services
             }
         }
 
+        private void RaiseDisconnected(
+            string message)
+        {
+            if (Disconnected != null)
+            {
+                Disconnected(message);
+            }
+        }
+
         private void DisconnectInternal()
         {
-            if (simConnect == null)
+            if (simConnect != null)
             {
-                return;
-            }
-
-            try
-            {
-                simConnect.Dispose();
-            }
-            catch
-            {
-                // Ignorer les erreurs pendant la fermeture.
+                try
+                {
+                    simConnect.Dispose();
+                }
+                catch
+                {
+                    // Ignorer les erreurs de fermeture.
+                }
             }
 
             simConnect = null;
             currentAircraftTitle = string.Empty;
+            currentNextWaypointId = string.Empty;
+            currentNavigationData =
+                new RawNavigationData();
         }
 
         public void Dispose()

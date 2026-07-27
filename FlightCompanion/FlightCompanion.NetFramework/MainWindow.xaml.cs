@@ -20,6 +20,12 @@ namespace FlightCompanion.NetFramework
         private AircraftProfileService aircraftProfileService;
         private AircraftProfile currentAircraftProfile;
 
+        /*
+         * Empêche l'événement TextChanged de relancer inutilement
+         * le calcul lorsque l'application remplit la distance GPS.
+         */
+        private bool isUpdatingGpsDistance;
+
         public MainWindow()
         {
             InitializeComponent();
@@ -44,8 +50,11 @@ namespace FlightCompanion.NetFramework
             windowSource =
                 HwndSource.FromHwnd(windowHandle);
 
-            windowSource.AddHook(
-                WindowMessageHook);
+            if (windowSource != null)
+            {
+                windowSource.AddHook(
+                    WindowMessageHook);
+            }
 
             simConnectService =
                 new SimConnectService();
@@ -129,6 +138,33 @@ namespace FlightCompanion.NetFramework
             AircraftProfileText.Text =
                 "Profil : ---";
 
+            FlightPlanStatusText.Text =
+                "Plan actif : ---";
+
+            WaypointText.Text =
+                "Waypoint : ---";
+
+            WaypointProgressText.Text =
+                "Progression : --- / ---";
+
+            GpsDistanceText.Text =
+                "Distance restante : --- NM";
+
+            NextWaypointDistanceText.Text =
+                "Prochain waypoint : --- NM";
+
+            GpsTimeText.Text =
+                "Temps restant : ---";
+
+            GpsTodStatusText.Text =
+                "En attente...";
+
+            GpsTodStatusText.Foreground =
+                Brushes.Orange;
+
+            GpsSourceText.Text =
+                "Source : saisie manuelle";
+
             RecommendedVsText.Text =
                 "--- ft/min";
 
@@ -146,6 +182,8 @@ namespace FlightCompanion.NetFramework
 
             currentAircraftProfile = null;
             hasReceivedFlightData = false;
+
+            DistanceTextBox.IsReadOnly = false;
         }
 
         private void SimConnectService_Error(
@@ -167,23 +205,45 @@ namespace FlightCompanion.NetFramework
             hasReceivedFlightData =
                 true;
 
+            UpdateFlightDisplay(
+                flightData);
+
+            UpdateAircraftProfile(
+                flightData);
+
+            UpdateGpsDisplay(
+                flightData);
+
+            ApplyGpsDistanceIfEnabled(
+                flightData);
+
+            UpdateDescentCalculation(false);
+        }
+
+        private void UpdateFlightDisplay(
+            FlightData flightData)
+        {
             AltitudeText.Text =
                 string.Format(
+                    CultureInfo.CurrentCulture,
                     "{0:N0} ft",
                     flightData.AltitudeFeet);
 
             SpeedText.Text =
                 string.Format(
+                    CultureInfo.CurrentCulture,
                     "{0:N0} kt",
                     flightData.GroundSpeedKnots);
 
             VSText.Text =
                 string.Format(
+                    CultureInfo.CurrentCulture,
                     "{0:+0;-0;0} ft/min",
                     flightData.VerticalSpeedFeetPerMinute);
 
             HeadingText.Text =
                 string.Format(
+                    CultureInfo.CurrentCulture,
                     "{0:000}°",
                     flightData.HeadingDegrees);
 
@@ -193,7 +253,11 @@ namespace FlightCompanion.NetFramework
                     ? "Avion : non identifié"
                     : "Avion : " +
                       flightData.AircraftTitle;
+        }
 
+        private void UpdateAircraftProfile(
+            FlightData flightData)
+        {
             currentAircraftProfile =
                 aircraftProfileService.FindProfile(
                     flightData.AircraftTitle);
@@ -207,11 +271,276 @@ namespace FlightCompanion.NetFramework
 
             AircraftProfileText.Text =
                 string.Format(
+                    CultureInfo.CurrentCulture,
                     "Profil : {0} | Approche : {1} kt | Descente : {2} ft/min",
                     currentAircraftProfile.Name,
                     currentAircraftProfile.ApproachSpeed,
                     currentAircraftProfile
                         .RecommendedDescentRate);
+        }
+
+        private void UpdateGpsDisplay(
+            FlightData flightData)
+        {
+            FlightPlanStatusText.Text =
+                flightData.HasActiveFlightPlan
+                    ? "Plan actif : OUI"
+                    : "Plan actif : NON";
+
+            FlightPlanStatusText.Foreground =
+                flightData.HasActiveFlightPlan
+                    ? Brushes.Lime
+                    : Brushes.Orange;
+
+            WaypointText.Text =
+                string.IsNullOrWhiteSpace(
+                    flightData.NextWaypointId)
+                    ? "Waypoint : ---"
+                    : "Waypoint : " +
+                      flightData.NextWaypointId;
+
+            if (flightData.WaypointCount > 0)
+            {
+                WaypointProgressText.Text =
+                    string.Format(
+                        CultureInfo.CurrentCulture,
+                        "Progression : {0} / {1}",
+                        flightData.ActiveWaypointIndex + 1,
+                        flightData.WaypointCount);
+            }
+            else
+            {
+                WaypointProgressText.Text =
+                    "Progression : --- / ---";
+            }
+
+            if (flightData.HasActiveFlightPlan &&
+                flightData.GpsDistanceRemainingNm > 0)
+            {
+                GpsDistanceText.Text =
+                    string.Format(
+                        CultureInfo.CurrentCulture,
+                        "Distance restante : {0:0.0} NM",
+                        flightData.GpsDistanceRemainingNm);
+            }
+            else
+            {
+                GpsDistanceText.Text =
+                    "Distance restante : --- NM";
+            }
+
+            if (flightData.NextWaypointDistanceNm > 0)
+            {
+                NextWaypointDistanceText.Text =
+                    string.Format(
+                        CultureInfo.CurrentCulture,
+                        "Prochain waypoint : {0:0.0} NM",
+                        flightData.NextWaypointDistanceNm);
+            }
+            else
+            {
+                NextWaypointDistanceText.Text =
+                    "Prochain waypoint : --- NM";
+            }
+
+            GpsTimeText.Text =
+                FormatGpsTime(
+                    flightData.GpsEteSeconds);
+
+            UpdateGpsTodStatus(
+                flightData);
+        }
+
+        private string FormatGpsTime(
+            double totalSeconds)
+        {
+            if (totalSeconds <= 0)
+            {
+                return "Temps restant : ---";
+            }
+
+            TimeSpan remainingTime =
+                TimeSpan.FromSeconds(
+                    totalSeconds);
+
+            if (remainingTime.TotalHours >= 1)
+            {
+                return string.Format(
+                    CultureInfo.CurrentCulture,
+                    "Temps restant : {0:00} h {1:00} min",
+                    (int)remainingTime.TotalHours,
+                    remainingTime.Minutes);
+            }
+
+            return string.Format(
+                CultureInfo.CurrentCulture,
+                "Temps restant : {0:00} min {1:00} s",
+                remainingTime.Minutes,
+                remainingTime.Seconds);
+        }
+
+        private void UpdateGpsTodStatus(
+            FlightData flightData)
+        {
+            double targetAltitude;
+
+            if (!flightData.HasActiveFlightPlan ||
+                flightData.GpsDistanceRemainingNm <= 0)
+            {
+                GpsTodStatusText.Text =
+                    "Aucune distance GPS";
+
+                GpsTodStatusText.Foreground =
+                    Brushes.Orange;
+
+                return;
+            }
+
+            if (!TryReadNumber(
+                    TargetAltitudeTextBox.Text,
+                    out targetAltitude))
+            {
+                GpsTodStatusText.Text =
+                    "Altitude cible incorrecte";
+
+                GpsTodStatusText.Foreground =
+                    Brushes.Red;
+
+                return;
+            }
+
+            double altitudeToLose =
+                flightData.AltitudeFeet -
+                targetAltitude;
+
+            if (altitudeToLose <= 0)
+            {
+                GpsTodStatusText.Text =
+                    "Aucune descente nécessaire";
+
+                GpsTodStatusText.Foreground =
+                    Brushes.Orange;
+
+                return;
+            }
+
+            double distanceBeforeTod =
+                TodCalculator
+                    .CalculateDistanceBeforeTod(
+                        flightData.AltitudeFeet,
+                        targetAltitude,
+                        flightData
+                            .GpsDistanceRemainingNm);
+
+            if (distanceBeforeTod > 0)
+            {
+                GpsTodStatusText.Text =
+                    string.Format(
+                        CultureInfo.CurrentCulture,
+                        "TOD dans {0:0.0} NM",
+                        distanceBeforeTod);
+
+                GpsTodStatusText.Foreground =
+                    Brushes.Orange;
+            }
+            else
+            {
+                GpsTodStatusText.Text =
+                    "DESCENDRE MAINTENANT";
+
+                GpsTodStatusText.Foreground =
+                    Brushes.Lime;
+            }
+        }
+
+        private void ApplyGpsDistanceIfEnabled(
+            FlightData flightData)
+        {
+            bool useGpsDistance =
+                UseGpsDistanceCheckBox.IsChecked ==
+                true;
+
+            DistanceTextBox.IsReadOnly =
+                useGpsDistance;
+
+            if (!useGpsDistance)
+            {
+                GpsSourceText.Text =
+                    "Source : saisie manuelle";
+
+                return;
+            }
+
+            if (!flightData.HasActiveFlightPlan ||
+                flightData.GpsDistanceRemainingNm <= 0)
+            {
+                GpsSourceText.Text =
+                    "Source : GPS indisponible";
+
+                GpsSourceText.Foreground =
+                    Brushes.Orange;
+
+                return;
+            }
+
+            GpsSourceText.Text =
+                "Source : distance GPS automatique";
+
+            GpsSourceText.Foreground =
+                Brushes.Lime;
+
+            string gpsDistance =
+                flightData.GpsDistanceRemainingNm
+                    .ToString(
+                        "0.0",
+                        CultureInfo.CurrentCulture);
+
+            if (DistanceTextBox.Text ==
+                gpsDistance)
+            {
+                return;
+            }
+
+            isUpdatingGpsDistance =
+                true;
+
+            DistanceTextBox.Text =
+                gpsDistance;
+
+            isUpdatingGpsDistance =
+                false;
+        }
+
+        private void UseGpsDistanceCheckBox_Changed(
+            object sender,
+            RoutedEventArgs e)
+        {
+            if (!IsLoaded)
+            {
+                return;
+            }
+
+            bool useGpsDistance =
+                UseGpsDistanceCheckBox.IsChecked ==
+                true;
+
+            DistanceTextBox.IsReadOnly =
+                useGpsDistance;
+
+            if (useGpsDistance &&
+                hasReceivedFlightData)
+            {
+                ApplyGpsDistanceIfEnabled(
+                    currentFlightData);
+            }
+            else
+            {
+                GpsSourceText.Text =
+                    "Source : saisie manuelle";
+
+                GpsSourceText.Foreground =
+                    Brushes.Gray;
+            }
 
             UpdateDescentCalculation(false);
         }
@@ -220,9 +549,16 @@ namespace FlightCompanion.NetFramework
             object sender,
             System.Windows.Controls.TextChangedEventArgs e)
         {
-            if (!IsLoaded)
+            if (!IsLoaded ||
+                isUpdatingGpsDistance)
             {
                 return;
+            }
+
+            if (hasReceivedFlightData)
+            {
+                UpdateGpsTodStatus(
+                    currentFlightData);
             }
 
             UpdateDescentCalculation(false);
@@ -258,14 +594,7 @@ namespace FlightCompanion.NetFramework
                     TargetAltitudeTextBox.Text,
                     out targetAltitude))
             {
-                RecommendedVsText.Text =
-                    "--- ft/min";
-
-                TodDistanceText.Text =
-                    "--- NM";
-
-                TodTimeText.Text =
-                    "--- min";
+                ClearDescentResults();
 
                 if (showInputErrors)
                 {
@@ -284,14 +613,7 @@ namespace FlightCompanion.NetFramework
                     out distanceNm) ||
                 distanceNm <= 0)
             {
-                RecommendedVsText.Text =
-                    "--- ft/min";
-
-                TodDistanceText.Text =
-                    "--- NM";
-
-                TodTimeText.Text =
-                    "--- min";
+                ClearDescentResults();
 
                 if (showInputErrors)
                 {
@@ -306,18 +628,12 @@ namespace FlightCompanion.NetFramework
             }
 
             double groundSpeed =
-                currentFlightData.GroundSpeedKnots;
+                currentFlightData
+                    .GroundSpeedKnots;
 
             if (groundSpeed < 1)
             {
-                RecommendedVsText.Text =
-                    "--- ft/min";
-
-                TodDistanceText.Text =
-                    "--- NM";
-
-                TodTimeText.Text =
-                    "--- min";
+                ClearDescentResults();
 
                 DescentAdviceText.Text =
                     "Vitesse sol insuffisante";
@@ -329,7 +645,8 @@ namespace FlightCompanion.NetFramework
             }
 
             double currentAltitude =
-                currentFlightData.AltitudeFeet;
+                currentFlightData
+                    .AltitudeFeet;
 
             double altitudeToLose =
                 currentAltitude -
@@ -345,6 +662,7 @@ namespace FlightCompanion.NetFramework
 
             RecommendedVsText.Text =
                 string.Format(
+                    CultureInfo.CurrentCulture,
                     "{0:+0;-0;0} ft/min",
                     recommendedVs);
 
@@ -388,11 +706,13 @@ namespace FlightCompanion.NetFramework
             {
                 TodDistanceText.Text =
                     string.Format(
+                        CultureInfo.CurrentCulture,
                         "{0:0.0} NM",
                         distanceBeforeTod);
 
                 TodTimeText.Text =
                     string.Format(
+                        CultureInfo.CurrentCulture,
                         "{0} min {1:00} s",
                         (int)timeBeforeTod
                             .TotalMinutes,
@@ -411,6 +731,7 @@ namespace FlightCompanion.NetFramework
 
                 TodTimeText.Text =
                     string.Format(
+                        CultureInfo.CurrentCulture,
                         "Distance nécessaire : {0:0.0} NM",
                         requiredDescentDistance);
 
@@ -438,6 +759,18 @@ namespace FlightCompanion.NetFramework
                         Brushes.Red;
                 }
             }
+        }
+
+        private void ClearDescentResults()
+        {
+            RecommendedVsText.Text =
+                "--- ft/min";
+
+            TodDistanceText.Text =
+                "--- NM";
+
+            TodTimeText.Text =
+                "--- min";
         }
 
         private bool TryReadNumber(
