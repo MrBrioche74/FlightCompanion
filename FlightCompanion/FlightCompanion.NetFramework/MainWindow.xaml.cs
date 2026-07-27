@@ -17,12 +17,21 @@ namespace FlightCompanion.NetFramework
         private FlightData currentFlightData;
         private bool hasReceivedFlightData;
 
+        private AircraftProfileService aircraftProfileService;
+        private AircraftProfile currentAircraftProfile;
+
         public MainWindow()
         {
             InitializeComponent();
 
-            SourceInitialized += MainWindow_SourceInitialized;
-            Closed += MainWindow_Closed;
+            aircraftProfileService =
+                new AircraftProfileService();
+
+            SourceInitialized +=
+                MainWindow_SourceInitialized;
+
+            Closed +=
+                MainWindow_Closed;
         }
 
         private void MainWindow_SourceInitialized(
@@ -35,7 +44,8 @@ namespace FlightCompanion.NetFramework
             windowSource =
                 HwndSource.FromHwnd(windowHandle);
 
-            windowSource.AddHook(WindowMessageHook);
+            windowSource.AddHook(
+                WindowMessageHook);
 
             simConnectService =
                 new SimConnectService();
@@ -52,10 +62,14 @@ namespace FlightCompanion.NetFramework
             simConnectService.FlightDataReceived +=
                 SimConnectService_FlightDataReceived;
 
-            StatusText.Text = "● Connexion à MSFS...";
-            StatusText.Foreground = Brushes.Orange;
+            StatusText.Text =
+                "● Connexion à MSFS...";
 
-            simConnectService.Connect(windowHandle);
+            StatusText.Foreground =
+                Brushes.Orange;
+
+            simConnectService.Connect(
+                windowHandle);
         }
 
         private IntPtr WindowMessageHook(
@@ -68,7 +82,11 @@ namespace FlightCompanion.NetFramework
             if (message ==
                 SimConnectService.WindowMessageId)
             {
-                simConnectService.ReceiveMessage();
+                if (simConnectService != null)
+                {
+                    simConnectService.ReceiveMessage();
+                }
+
                 handled = true;
             }
 
@@ -77,12 +95,15 @@ namespace FlightCompanion.NetFramework
 
         private void SimConnectService_Connected()
         {
-            StatusText.Text = "● MSFS CONNECTÉ";
-            StatusText.Foreground = Brushes.Lime;
+            StatusText.Text =
+                "● MSFS CONNECTÉ";
+
+            StatusText.Foreground =
+                Brushes.Lime;
         }
 
         private void SimConnectService_Disconnected(
-    string message)
+            string message)
         {
             StatusText.Text =
                 "● NON CONNECTÉ — " + message;
@@ -102,6 +123,12 @@ namespace FlightCompanion.NetFramework
             HeadingText.Text =
                 "---°";
 
+            AircraftText.Text =
+                "Avion : ---";
+
+            AircraftProfileText.Text =
+                "Profil : ---";
+
             RecommendedVsText.Text =
                 "--- ft/min";
 
@@ -114,27 +141,31 @@ namespace FlightCompanion.NetFramework
             DescentAdviceText.Text =
                 "En attente de MSFS";
 
-            AircraftText.Text =
-                "Avion : ---";
-
             DescentAdviceText.Foreground =
                 Brushes.Orange;
 
+            currentAircraftProfile = null;
             hasReceivedFlightData = false;
         }
 
         private void SimConnectService_Error(
             string message)
         {
-            StatusText.Text = message;
-            StatusText.Foreground = Brushes.Red;
+            StatusText.Text =
+                message;
+
+            StatusText.Foreground =
+                Brushes.Red;
         }
 
         private void SimConnectService_FlightDataReceived(
             FlightData flightData)
         {
-            currentFlightData = flightData;
-            hasReceivedFlightData = true;
+            currentFlightData =
+                flightData;
+
+            hasReceivedFlightData =
+                true;
 
             AltitudeText.Text =
                 string.Format(
@@ -157,33 +188,59 @@ namespace FlightCompanion.NetFramework
                     flightData.HeadingDegrees);
 
             AircraftText.Text =
-    string.IsNullOrWhiteSpace(
-        flightData.AircraftTitle)
-    ? "Avion : non identifié"
-    : "Avion : " +
-      flightData.AircraftTitle;
+                string.IsNullOrWhiteSpace(
+                    flightData.AircraftTitle)
+                    ? "Avion : non identifié"
+                    : "Avion : " +
+                      flightData.AircraftTitle;
+
+            currentAircraftProfile =
+                aircraftProfileService.FindProfile(
+                    flightData.AircraftTitle);
+
+            if (currentAircraftProfile == null)
+            {
+                currentAircraftProfile =
+                    aircraftProfileService
+                        .GetDefaultProfile();
+            }
+
+            AircraftProfileText.Text =
+                string.Format(
+                    "Profil : {0} | Approche : {1} kt | Descente : {2} ft/min",
+                    currentAircraftProfile.Name,
+                    currentAircraftProfile.ApproachSpeed,
+                    currentAircraftProfile
+                        .RecommendedDescentRate);
 
             UpdateDescentCalculation(false);
         }
 
         private void DescentInput_TextChanged(
-      object sender,
-      System.Windows.Controls.TextChangedEventArgs e)
+            object sender,
+            System.Windows.Controls.TextChangedEventArgs e)
         {
             if (!IsLoaded)
+            {
                 return;
+            }
 
             UpdateDescentCalculation(false);
         }
 
         private void UpdateDescentCalculation(
-    bool showInputErrors)
+            bool showInputErrors)
         {
             if (!hasReceivedFlightData)
             {
-                RecommendedVsText.Text = "--- ft/min";
-                TodDistanceText.Text = "--- NM";
-                TodTimeText.Text = "--- min";
+                RecommendedVsText.Text =
+                    "--- ft/min";
+
+                TodDistanceText.Text =
+                    "--- NM";
+
+                TodTimeText.Text =
+                    "--- min";
 
                 DescentAdviceText.Text =
                     "En attente des données de MSFS";
@@ -201,9 +258,14 @@ namespace FlightCompanion.NetFramework
                     TargetAltitudeTextBox.Text,
                     out targetAltitude))
             {
-                RecommendedVsText.Text = "--- ft/min";
-                TodDistanceText.Text = "--- NM";
-                TodTimeText.Text = "--- min";
+                RecommendedVsText.Text =
+                    "--- ft/min";
+
+                TodDistanceText.Text =
+                    "--- NM";
+
+                TodTimeText.Text =
+                    "--- min";
 
                 if (showInputErrors)
                 {
@@ -222,9 +284,14 @@ namespace FlightCompanion.NetFramework
                     out distanceNm) ||
                 distanceNm <= 0)
             {
-                RecommendedVsText.Text = "--- ft/min";
-                TodDistanceText.Text = "--- NM";
-                TodTimeText.Text = "--- min";
+                RecommendedVsText.Text =
+                    "--- ft/min";
+
+                TodDistanceText.Text =
+                    "--- NM";
+
+                TodTimeText.Text =
+                    "--- min";
 
                 if (showInputErrors)
                 {
@@ -243,9 +310,14 @@ namespace FlightCompanion.NetFramework
 
             if (groundSpeed < 1)
             {
-                RecommendedVsText.Text = "--- ft/min";
-                TodDistanceText.Text = "--- NM";
-                TodTimeText.Text = "--- min";
+                RecommendedVsText.Text =
+                    "--- ft/min";
+
+                TodDistanceText.Text =
+                    "--- NM";
+
+                TodTimeText.Text =
+                    "--- min";
 
                 DescentAdviceText.Text =
                     "Vitesse sol insuffisante";
@@ -260,14 +332,16 @@ namespace FlightCompanion.NetFramework
                 currentFlightData.AltitudeFeet;
 
             double altitudeToLose =
-                currentAltitude - targetAltitude;
+                currentAltitude -
+                targetAltitude;
 
             double recommendedVs =
-                DescentCalculator.CalculateVerticalSpeed(
-                    currentAltitude,
-                    targetAltitude,
-                    distanceNm,
-                    groundSpeed);
+                DescentCalculator
+                    .CalculateVerticalSpeed(
+                        currentAltitude,
+                        targetAltitude,
+                        distanceNm,
+                        groundSpeed);
 
             RecommendedVsText.Text =
                 string.Format(
@@ -275,25 +349,31 @@ namespace FlightCompanion.NetFramework
                     recommendedVs);
 
             double requiredDescentDistance =
-                TodCalculator.CalculateRequiredDescentDistance(
-                    currentAltitude,
-                    targetAltitude);
+                TodCalculator
+                    .CalculateRequiredDescentDistance(
+                        currentAltitude,
+                        targetAltitude);
 
             double distanceBeforeTod =
-                TodCalculator.CalculateDistanceBeforeTod(
-                    currentAltitude,
-                    targetAltitude,
-                    distanceNm);
+                TodCalculator
+                    .CalculateDistanceBeforeTod(
+                        currentAltitude,
+                        targetAltitude,
+                        distanceNm);
 
             TimeSpan timeBeforeTod =
-                TodCalculator.CalculateTimeBeforeTod(
-                    distanceBeforeTod,
-                    groundSpeed);
+                TodCalculator
+                    .CalculateTimeBeforeTod(
+                        distanceBeforeTod,
+                        groundSpeed);
 
             if (altitudeToLose <= 0)
             {
-                TodDistanceText.Text = "--- NM";
-                TodTimeText.Text = "--- min";
+                TodDistanceText.Text =
+                    "--- NM";
+
+                TodTimeText.Text =
+                    "--- min";
 
                 DescentAdviceText.Text =
                     "Une montée est nécessaire";
@@ -314,7 +394,8 @@ namespace FlightCompanion.NetFramework
                 TodTimeText.Text =
                     string.Format(
                         "{0} min {1:00} s",
-                        (int)timeBeforeTod.TotalMinutes,
+                        (int)timeBeforeTod
+                            .TotalMinutes,
                         timeBeforeTod.Seconds);
 
                 DescentAdviceText.Text =
@@ -325,7 +406,9 @@ namespace FlightCompanion.NetFramework
             }
             else
             {
-                TodDistanceText.Text = "MAINTENANT";
+                TodDistanceText.Text =
+                    "MAINTENANT";
+
                 TodTimeText.Text =
                     string.Format(
                         "Distance nécessaire : {0:0.0} NM",
