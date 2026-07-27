@@ -9,5 +9,7 @@
         public double VerticalSpeedFeetPerMinute { get; set; }
 
         public double HeadingDegrees { get; set; }
+
+        public string AircraftTitle { get; set; }
     }
 }

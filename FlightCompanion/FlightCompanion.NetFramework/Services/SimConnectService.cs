@@ -10,6 +10,7 @@ namespace FlightCompanion.NetFramework.Services
         public const int WindowMessageId = 0x0402;
 
         private SimConnect simConnect;
+        private string currentAircraftTitle = string.Empty;
 
         public event Action Connected;
         public event Action<string> Disconnected;
@@ -18,12 +19,14 @@ namespace FlightCompanion.NetFramework.Services
 
         private enum Definitions
         {
-            FlightData
+            FlightData,
+            AircraftTitle
         }
 
         private enum Requests
         {
-            FlightData
+            FlightData,
+            AircraftTitle
         }
 
         [StructLayout(LayoutKind.Sequential, Pack = 1)]
@@ -33,6 +36,18 @@ namespace FlightCompanion.NetFramework.Services
             public double GroundSpeedKnots;
             public double VerticalSpeedFeetPerSecond;
             public double HeadingRadians;
+        }
+
+        [StructLayout(
+            LayoutKind.Sequential,
+            CharSet = CharSet.Ansi,
+            Pack = 1)]
+        private struct RawAircraftTitle
+        {
+            [MarshalAs(
+                UnmanagedType.ByValTStr,
+                SizeConst = 256)]
+            public string Title;
         }
 
         public void Connect(IntPtr windowHandle)
@@ -103,6 +118,11 @@ namespace FlightCompanion.NetFramework.Services
 
         private void ConfigureFlightData()
         {
+            if (simConnect == null)
+            {
+                return;
+            }
+
             simConnect.AddToDataDefinition(
                 Definitions.FlightData,
                 "INDICATED ALTITUDE",
@@ -147,14 +167,53 @@ namespace FlightCompanion.NetFramework.Services
                 0,
                 0,
                 0);
+
+            simConnect.AddToDataDefinition(
+                Definitions.AircraftTitle,
+                "TITLE",
+                null,
+                SIMCONNECT_DATATYPE.STRING256,
+                0,
+                SimConnect.SIMCONNECT_UNUSED);
+
+            simConnect.RegisterDataDefineStruct<RawAircraftTitle>(
+                Definitions.AircraftTitle);
+
+            simConnect.RequestDataOnSimObject(
+                Requests.AircraftTitle,
+                Definitions.AircraftTitle,
+                SimConnect.SIMCONNECT_OBJECT_ID_USER,
+                SIMCONNECT_PERIOD.SECOND,
+                SIMCONNECT_DATA_REQUEST_FLAG.DEFAULT,
+                0,
+                0,
+                0);
         }
 
         private void OnRecvSimobjectData(
             SimConnect sender,
             SIMCONNECT_RECV_SIMOBJECT_DATA data)
         {
-            if ((Requests)data.dwRequestID != Requests.FlightData ||
-                data.dwData.Length == 0)
+            if (data.dwData.Length == 0)
+            {
+                return;
+            }
+
+            Requests request =
+                (Requests)data.dwRequestID;
+
+            if (request == Requests.AircraftTitle)
+            {
+                RawAircraftTitle aircraftData =
+                    (RawAircraftTitle)data.dwData[0];
+
+                currentAircraftTitle =
+                    aircraftData.Title ?? string.Empty;
+
+                return;
+            }
+
+            if (request != Requests.FlightData)
             {
                 return;
             }
@@ -163,19 +222,33 @@ namespace FlightCompanion.NetFramework.Services
                 (RawFlightData)data.dwData[0];
 
             double headingDegrees =
-                rawData.HeadingRadians * 180.0 / Math.PI;
+                rawData.HeadingRadians *
+                180.0 /
+                Math.PI;
 
             headingDegrees =
-                (headingDegrees + 360.0) % 360.0;
+                (headingDegrees + 360.0) %
+                360.0;
 
-            FlightData flightData = new FlightData
-            {
-                AltitudeFeet = rawData.AltitudeFeet,
-                GroundSpeedKnots = rawData.GroundSpeedKnots,
-                VerticalSpeedFeetPerMinute =
-                    rawData.VerticalSpeedFeetPerSecond * 60.0,
-                HeadingDegrees = headingDegrees
-            };
+            FlightData flightData =
+                new FlightData
+                {
+                    AltitudeFeet =
+                        rawData.AltitudeFeet,
+
+                    GroundSpeedKnots =
+                        rawData.GroundSpeedKnots,
+
+                    VerticalSpeedFeetPerMinute =
+                        rawData.VerticalSpeedFeetPerSecond *
+                        60.0,
+
+                    HeadingDegrees =
+                        headingDegrees,
+
+                    AircraftTitle =
+                        currentAircraftTitle
+                };
 
             if (FlightDataReceived != null)
             {
@@ -201,7 +274,9 @@ namespace FlightCompanion.NetFramework.Services
         {
             if (Error != null)
             {
-                Error("Erreur SimConnect : " + data.dwException);
+                Error(
+                    "Erreur SimConnect : " +
+                    data.dwException);
             }
         }
 
@@ -222,6 +297,7 @@ namespace FlightCompanion.NetFramework.Services
             }
 
             simConnect = null;
+            currentAircraftTitle = string.Empty;
         }
 
         public void Dispose()

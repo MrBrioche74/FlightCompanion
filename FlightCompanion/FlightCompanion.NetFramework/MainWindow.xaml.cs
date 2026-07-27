@@ -114,6 +114,9 @@ namespace FlightCompanion.NetFramework
             DescentAdviceText.Text =
                 "En attente de MSFS";
 
+            AircraftText.Text =
+                "Avion : ---";
+
             DescentAdviceText.Foreground =
                 Brushes.Orange;
 
@@ -153,14 +156,24 @@ namespace FlightCompanion.NetFramework
                     "{0:000}°",
                     flightData.HeadingDegrees);
 
+            AircraftText.Text =
+    string.IsNullOrWhiteSpace(
+        flightData.AircraftTitle)
+    ? "Avion : non identifié"
+    : "Avion : " +
+      flightData.AircraftTitle;
+
             UpdateDescentCalculation(false);
         }
 
-        private void CalculateButton_Click(
-            object sender,
-            RoutedEventArgs e)
+        private void DescentInput_TextChanged(
+      object sender,
+      System.Windows.Controls.TextChangedEventArgs e)
         {
-            UpdateDescentCalculation(true);
+            if (!IsLoaded)
+                return;
+
+            UpdateDescentCalculation(false);
         }
 
         private void UpdateDescentCalculation(
