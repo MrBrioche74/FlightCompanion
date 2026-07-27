@@ -82,19 +82,35 @@ namespace FlightCompanion.NetFramework
         }
 
         private void SimConnectService_Disconnected(
-            string message)
+    string message)
         {
             StatusText.Text =
                 "● NON CONNECTÉ — " + message;
 
-            StatusText.Foreground = Brushes.Orange;
+            StatusText.Foreground =
+                Brushes.Orange;
 
-            AltitudeText.Text = "----- ft";
-            SpeedText.Text = "----- kt";
-            VSText.Text = "----- ft/min";
-            HeadingText.Text = "---°";
+            AltitudeText.Text =
+                "----- ft";
 
-            RecommendedVsText.Text = "--- ft/min";
+            SpeedText.Text =
+                "----- kt";
+
+            VSText.Text =
+                "----- ft/min";
+
+            HeadingText.Text =
+                "---°";
+
+            RecommendedVsText.Text =
+                "--- ft/min";
+
+            TodDistanceText.Text =
+                "--- NM";
+
+            TodTimeText.Text =
+                "--- min";
+
             DescentAdviceText.Text =
                 "En attente de MSFS";
 
@@ -148,12 +164,13 @@ namespace FlightCompanion.NetFramework
         }
 
         private void UpdateDescentCalculation(
-            bool showInputErrors)
+    bool showInputErrors)
         {
             if (!hasReceivedFlightData)
             {
-                RecommendedVsText.Text =
-                    "--- ft/min";
+                RecommendedVsText.Text = "--- ft/min";
+                TodDistanceText.Text = "--- NM";
+                TodTimeText.Text = "--- min";
 
                 DescentAdviceText.Text =
                     "En attente des données de MSFS";
@@ -171,6 +188,10 @@ namespace FlightCompanion.NetFramework
                     TargetAltitudeTextBox.Text,
                     out targetAltitude))
             {
+                RecommendedVsText.Text = "--- ft/min";
+                TodDistanceText.Text = "--- NM";
+                TodTimeText.Text = "--- min";
+
                 if (showInputErrors)
                 {
                     DescentAdviceText.Text =
@@ -188,6 +209,10 @@ namespace FlightCompanion.NetFramework
                     out distanceNm) ||
                 distanceNm <= 0)
             {
+                RecommendedVsText.Text = "--- ft/min";
+                TodDistanceText.Text = "--- NM";
+                TodTimeText.Text = "--- min";
+
                 if (showInputErrors)
                 {
                     DescentAdviceText.Text =
@@ -200,10 +225,14 @@ namespace FlightCompanion.NetFramework
                 return;
             }
 
-            if (currentFlightData.GroundSpeedKnots < 1)
+            double groundSpeed =
+                currentFlightData.GroundSpeedKnots;
+
+            if (groundSpeed < 1)
             {
-                RecommendedVsText.Text =
-                    "--- ft/min";
+                RecommendedVsText.Text = "--- ft/min";
+                TodDistanceText.Text = "--- NM";
+                TodTimeText.Text = "--- min";
 
                 DescentAdviceText.Text =
                     "Vitesse sol insuffisante";
@@ -214,60 +243,104 @@ namespace FlightCompanion.NetFramework
                 return;
             }
 
+            double currentAltitude =
+                currentFlightData.AltitudeFeet;
+
+            double altitudeToLose =
+                currentAltitude - targetAltitude;
+
             double recommendedVs =
                 DescentCalculator.CalculateVerticalSpeed(
-                    currentFlightData.AltitudeFeet,
+                    currentAltitude,
                     targetAltitude,
                     distanceNm,
-                    currentFlightData.GroundSpeedKnots);
+                    groundSpeed);
 
             RecommendedVsText.Text =
                 string.Format(
                     "{0:+0;-0;0} ft/min",
                     recommendedVs);
 
-            double altitudeToLose =
-                currentFlightData.AltitudeFeet -
-                targetAltitude;
+            double requiredDescentDistance =
+                TodCalculator.CalculateRequiredDescentDistance(
+                    currentAltitude,
+                    targetAltitude);
 
-            double requiredSlope =
-                Math.Atan2(
-                    altitudeToLose,
-                    distanceNm * 6076.12) *
-                180.0 /
-                Math.PI;
+            double distanceBeforeTod =
+                TodCalculator.CalculateDistanceBeforeTod(
+                    currentAltitude,
+                    targetAltitude,
+                    distanceNm);
 
-            if (altitudeToLose < 0)
+            TimeSpan timeBeforeTod =
+                TodCalculator.CalculateTimeBeforeTod(
+                    distanceBeforeTod,
+                    groundSpeed);
+
+            if (altitudeToLose <= 0)
             {
+                TodDistanceText.Text = "--- NM";
+                TodTimeText.Text = "--- min";
+
                 DescentAdviceText.Text =
                     "Une montée est nécessaire";
 
                 DescentAdviceText.Foreground =
                     Brushes.Orange;
+
+                return;
             }
-            else if (requiredSlope < 1.5)
+
+            if (distanceBeforeTod > 0)
             {
+                TodDistanceText.Text =
+                    string.Format(
+                        "{0:0.0} NM",
+                        distanceBeforeTod);
+
+                TodTimeText.Text =
+                    string.Format(
+                        "{0} min {1:00} s",
+                        (int)timeBeforeTod.TotalMinutes,
+                        timeBeforeTod.Seconds);
+
                 DescentAdviceText.Text =
                     "Attendre avant de descendre";
 
                 DescentAdviceText.Foreground =
                     Brushes.Orange;
             }
-            else if (requiredSlope <= 3.5)
-            {
-                DescentAdviceText.Text =
-                    "Commencer la descente";
-
-                DescentAdviceText.Foreground =
-                    Brushes.Lime;
-            }
             else
             {
-                DescentAdviceText.Text =
-                    "Descente forte requise";
+                TodDistanceText.Text = "MAINTENANT";
+                TodTimeText.Text =
+                    string.Format(
+                        "Distance nécessaire : {0:0.0} NM",
+                        requiredDescentDistance);
 
-                DescentAdviceText.Foreground =
-                    Brushes.Red;
+                double requiredSlope =
+                    Math.Atan2(
+                        altitudeToLose,
+                        distanceNm * 6076.12) *
+                    180.0 /
+                    Math.PI;
+
+                if (requiredSlope <= 3.5)
+                {
+                    DescentAdviceText.Text =
+                        "COMMENCER LA DESCENTE";
+
+                    DescentAdviceText.Foreground =
+                        Brushes.Lime;
+                }
+                else
+                {
+                    DescentAdviceText.Text =
+                        "DESCENTE FORTE REQUISE";
+
+                    DescentAdviceText.Foreground =
+                        Brushes.Red;
+                }
             }
         }
 

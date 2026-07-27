@@ -307,7 +307,29 @@
                                    TextAlignment="Center"
                                    HorizontalAlignment="Center"
                                    Margin="0,20,0,20"/>
+                        <TextBlock Text="TOP OF DESCENT"
+           Foreground="#A9B8AC"
+           FontFamily="Consolas"
+           FontSize="15"
+           HorizontalAlignment="Center"
+           Margin="0,10,0,0"/>
 
+                        <TextBlock x:Name="TodDistanceText"
+           Text="--- NM"
+           Foreground="#72FF8F"
+           FontFamily="Consolas"
+           FontSize="30"
+           FontWeight="Bold"
+           HorizontalAlignment="Center"
+           Margin="0,8,0,0"/>
+
+                        <TextBlock x:Name="TodTimeText"
+           Text="--- min"
+           Foreground="#91A797"
+           FontFamily="Consolas"
+           FontSize="17"
+           HorizontalAlignment="Center"
+           Margin="0,4,0,18"/>
                         <TextBlock x:Name="DescentAdviceText"
                                    Text="En attente des données"
                                    Foreground="Orange"
