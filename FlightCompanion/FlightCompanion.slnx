@@ -6,7 +6,4 @@
   <Project Path="FlightCompanion.NetFramework/FlightCompanion.NetFramework.csproj" Id="9ee4ea12-1e12-4cce-ada1-cbdfec4aab9e">
     <Platform Solution="*|x64" Project="x64" />
   </Project>
-  <Project Path="FlightCompanion/FlightCompanion.csproj">
-    <Platform Solution="*|x64" Project="x64" />
-  </Project>
 </Solution>
