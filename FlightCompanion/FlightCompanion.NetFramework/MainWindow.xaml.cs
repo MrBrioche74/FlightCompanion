@@ -1,42 +1,21 @@
 ﻿using System;
 using System.Globalization;
-using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media;
-using Microsoft.FlightSimulator.SimConnect;
 using FlightCompanion.NetFramework.Calculators;
+using FlightCompanion.NetFramework.Models;
+using FlightCompanion.NetFramework.Services;
 
 namespace FlightCompanion.NetFramework
 {
     public partial class MainWindow : Window
     {
-        private const int WM_USER_SIMCONNECT = 0x0402;
-
-        private SimConnect simConnect;
+        private SimConnectService simConnectService;
         private HwndSource windowSource;
 
         private FlightData currentFlightData;
         private bool hasReceivedFlightData;
-
-        private enum Definitions
-        {
-            FlightData
-        }
-
-        private enum Requests
-        {
-            FlightData
-        }
-
-        [StructLayout(LayoutKind.Sequential, Pack = 1)]
-        private struct FlightData
-        {
-            public double AltitudeFeet;
-            public double GroundSpeedKnots;
-            public double VerticalSpeedFeetPerSecond;
-            public double HeadingRadians;
-        }
 
         public MainWindow()
         {
@@ -53,37 +32,30 @@ namespace FlightCompanion.NetFramework
             IntPtr windowHandle =
                 new WindowInteropHelper(this).Handle;
 
-            windowSource = HwndSource.FromHwnd(windowHandle);
+            windowSource =
+                HwndSource.FromHwnd(windowHandle);
+
             windowSource.AddHook(WindowMessageHook);
 
-            ConnectToMsfs(windowHandle);
-        }
+            simConnectService =
+                new SimConnectService();
 
-        private void ConnectToMsfs(IntPtr windowHandle)
-        {
-            try
-            {
-                StatusText.Text = "● Connexion à MSFS...";
-                StatusText.Foreground = Brushes.Orange;
+            simConnectService.Connected +=
+                SimConnectService_Connected;
 
-                simConnect = new SimConnect(
-                    "Flight Companion",
-                    windowHandle,
-                    WM_USER_SIMCONNECT,
-                    null,
-                    0);
+            simConnectService.Disconnected +=
+                SimConnectService_Disconnected;
 
-                simConnect.OnRecvOpen += SimConnect_OnRecvOpen;
-                simConnect.OnRecvQuit += SimConnect_OnRecvQuit;
-                simConnect.OnRecvException +=
-                    SimConnect_OnRecvException;
-                simConnect.OnRecvSimobjectData +=
-                    SimConnect_OnRecvSimobjectData;
-            }
-            catch (Exception exception)
-            {
-                ShowDisconnected(exception.Message);
-            }
+            simConnectService.Error +=
+                SimConnectService_Error;
+
+            simConnectService.FlightDataReceived +=
+                SimConnectService_FlightDataReceived;
+
+            StatusText.Text = "● Connexion à MSFS...";
+            StatusText.Foreground = Brushes.Orange;
+
+            simConnectService.Connect(windowHandle);
         }
 
         private IntPtr WindowMessageHook(
@@ -93,126 +65,77 @@ namespace FlightCompanion.NetFramework
             IntPtr lParam,
             ref bool handled)
         {
-            if (message == WM_USER_SIMCONNECT &&
-                simConnect != null)
+            if (message ==
+                SimConnectService.WindowMessageId)
             {
-                try
-                {
-                    simConnect.ReceiveMessage();
-                }
-                catch (Exception exception)
-                {
-                    ShowDisconnected(exception.Message);
-                }
-
+                simConnectService.ReceiveMessage();
                 handled = true;
             }
 
             return IntPtr.Zero;
         }
 
-        private void SimConnect_OnRecvOpen(
-            SimConnect sender,
-            SIMCONNECT_RECV_OPEN data)
+        private void SimConnectService_Connected()
         {
             StatusText.Text = "● MSFS CONNECTÉ";
             StatusText.Foreground = Brushes.Lime;
-
-            ConfigureFlightData();
         }
 
-        private void ConfigureFlightData()
+        private void SimConnectService_Disconnected(
+            string message)
         {
-            simConnect.AddToDataDefinition(
-                Definitions.FlightData,
-                "INDICATED ALTITUDE",
-                "feet",
-                SIMCONNECT_DATATYPE.FLOAT64,
-                0,
-                SimConnect.SIMCONNECT_UNUSED);
+            StatusText.Text =
+                "● NON CONNECTÉ — " + message;
 
-            simConnect.AddToDataDefinition(
-                Definitions.FlightData,
-                "GROUND VELOCITY",
-                "knots",
-                SIMCONNECT_DATATYPE.FLOAT64,
-                0,
-                SimConnect.SIMCONNECT_UNUSED);
+            StatusText.Foreground = Brushes.Orange;
 
-            simConnect.AddToDataDefinition(
-                Definitions.FlightData,
-                "VERTICAL SPEED",
-                "feet per second",
-                SIMCONNECT_DATATYPE.FLOAT64,
-                0,
-                SimConnect.SIMCONNECT_UNUSED);
+            AltitudeText.Text = "----- ft";
+            SpeedText.Text = "----- kt";
+            VSText.Text = "----- ft/min";
+            HeadingText.Text = "---°";
 
-            simConnect.AddToDataDefinition(
-                Definitions.FlightData,
-                "PLANE HEADING DEGREES TRUE",
-                "radians",
-                SIMCONNECT_DATATYPE.FLOAT64,
-                0,
-                SimConnect.SIMCONNECT_UNUSED);
+            RecommendedVsText.Text = "--- ft/min";
+            DescentAdviceText.Text =
+                "En attente de MSFS";
 
-            simConnect.RegisterDataDefineStruct<FlightData>(
-                Definitions.FlightData);
+            DescentAdviceText.Foreground =
+                Brushes.Orange;
 
-            simConnect.RequestDataOnSimObject(
-                Requests.FlightData,
-                Definitions.FlightData,
-                SimConnect.SIMCONNECT_OBJECT_ID_USER,
-                SIMCONNECT_PERIOD.SECOND,
-                SIMCONNECT_DATA_REQUEST_FLAG.DEFAULT,
-                0,
-                0,
-                0);
+            hasReceivedFlightData = false;
         }
 
-        private void SimConnect_OnRecvSimobjectData(
-            SimConnect sender,
-            SIMCONNECT_RECV_SIMOBJECT_DATA data)
+        private void SimConnectService_Error(
+            string message)
         {
-            if ((Requests)data.dwRequestID !=
-                    Requests.FlightData ||
-                data.dwData.Length == 0)
-            {
-                return;
-            }
+            StatusText.Text = message;
+            StatusText.Foreground = Brushes.Red;
+        }
 
-            currentFlightData =
-                (FlightData)data.dwData[0];
-
+        private void SimConnectService_FlightDataReceived(
+            FlightData flightData)
+        {
+            currentFlightData = flightData;
             hasReceivedFlightData = true;
-
-            double verticalSpeedFeetPerMinute =
-                currentFlightData.VerticalSpeedFeetPerSecond * 60.0;
-
-            double headingDegrees =
-                currentFlightData.HeadingRadians * 180.0 / Math.PI;
-
-            headingDegrees =
-                (headingDegrees + 360.0) % 360.0;
 
             AltitudeText.Text =
                 string.Format(
                     "{0:N0} ft",
-                    currentFlightData.AltitudeFeet);
+                    flightData.AltitudeFeet);
 
             SpeedText.Text =
                 string.Format(
                     "{0:N0} kt",
-                    currentFlightData.GroundSpeedKnots);
+                    flightData.GroundSpeedKnots);
 
             VSText.Text =
                 string.Format(
                     "{0:+0;-0;0} ft/min",
-                    verticalSpeedFeetPerMinute);
+                    flightData.VerticalSpeedFeetPerMinute);
 
             HeadingText.Text =
                 string.Format(
                     "{0:000}°",
-                    headingDegrees);
+                    flightData.HeadingDegrees);
 
             UpdateDescentCalculation(false);
         }
@@ -229,11 +152,15 @@ namespace FlightCompanion.NetFramework
         {
             if (!hasReceivedFlightData)
             {
-                RecommendedVsText.Text = "--- ft/min";
+                RecommendedVsText.Text =
+                    "--- ft/min";
+
                 DescentAdviceText.Text =
                     "En attente des données de MSFS";
 
-                DescentAdviceText.Foreground = Brushes.Orange;
+                DescentAdviceText.Foreground =
+                    Brushes.Orange;
+
                 return;
             }
 
@@ -249,7 +176,8 @@ namespace FlightCompanion.NetFramework
                     DescentAdviceText.Text =
                         "Altitude cible incorrecte";
 
-                    DescentAdviceText.Foreground = Brushes.Red;
+                    DescentAdviceText.Foreground =
+                        Brushes.Red;
                 }
 
                 return;
@@ -265,22 +193,24 @@ namespace FlightCompanion.NetFramework
                     DescentAdviceText.Text =
                         "Distance incorrecte";
 
-                    DescentAdviceText.Foreground = Brushes.Red;
+                    DescentAdviceText.Foreground =
+                        Brushes.Red;
                 }
 
                 return;
             }
 
-            double groundSpeed =
-                currentFlightData.GroundSpeedKnots;
-
-            if (groundSpeed < 1)
+            if (currentFlightData.GroundSpeedKnots < 1)
             {
-                RecommendedVsText.Text = "--- ft/min";
+                RecommendedVsText.Text =
+                    "--- ft/min";
+
                 DescentAdviceText.Text =
                     "Vitesse sol insuffisante";
 
-                DescentAdviceText.Foreground = Brushes.Orange;
+                DescentAdviceText.Foreground =
+                    Brushes.Orange;
+
                 return;
             }
 
@@ -289,7 +219,7 @@ namespace FlightCompanion.NetFramework
                     currentFlightData.AltitudeFeet,
                     targetAltitude,
                     distanceNm,
-                    groundSpeed);
+                    currentFlightData.GroundSpeedKnots);
 
             RecommendedVsText.Text =
                 string.Format(
@@ -364,67 +294,6 @@ namespace FlightCompanion.NetFramework
                 out value);
         }
 
-        private void SimConnect_OnRecvQuit(
-            SimConnect sender,
-            SIMCONNECT_RECV data)
-        {
-            ShowDisconnected("MSFS a été fermé.");
-        }
-
-        private void SimConnect_OnRecvException(
-            SimConnect sender,
-            SIMCONNECT_RECV_EXCEPTION data)
-        {
-            StatusText.Text =
-                "Erreur SimConnect : " +
-                data.dwException;
-
-            StatusText.Foreground = Brushes.Red;
-        }
-
-        private void ShowDisconnected(string message)
-        {
-            StatusText.Text =
-                "● NON CONNECTÉ — " + message;
-
-            StatusText.Foreground = Brushes.Orange;
-
-            AltitudeText.Text = "----- ft";
-            SpeedText.Text = "----- kt";
-            VSText.Text = "----- ft/min";
-            HeadingText.Text = "---°";
-
-            RecommendedVsText.Text = "--- ft/min";
-            DescentAdviceText.Text =
-                "En attente de MSFS";
-
-            DescentAdviceText.Foreground =
-                Brushes.Orange;
-
-            hasReceivedFlightData = false;
-
-            Disconnect();
-        }
-
-        private void Disconnect()
-        {
-            if (simConnect == null)
-            {
-                return;
-            }
-
-            try
-            {
-                simConnect.Dispose();
-            }
-            catch
-            {
-                // Ignorer les erreurs pendant la fermeture.
-            }
-
-            simConnect = null;
-        }
-
         private void MainWindow_Closed(
             object sender,
             EventArgs e)
@@ -435,7 +304,10 @@ namespace FlightCompanion.NetFramework
                     WindowMessageHook);
             }
 
-            Disconnect();
+            if (simConnectService != null)
+            {
+                simConnectService.Dispose();
+            }
         }
     }
 }
