@@ -1,5 +1,31 @@
+# Visual Studio
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Build
 bin/
 obj/
-.vs/
-*.user
+
+# NuGet
+packages/
+
+# Logs
+*.log
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+# Rider / VS Code
+.idea/
+.vscode/
+
+# Fichiers temporaires
+*.tmp
+*.cache
+
+# SimConnect SDK (à installer localement)
 FlightCompanion/lib/Microsoft.FlightSimulator.SimConnect.dll
