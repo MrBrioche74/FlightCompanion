@@ -21,51 +21,253 @@ namespace FlightCompanion.NetFramework.Services
                 return null;
             }
 
-            string normalizedTitle = aircraftTitle.Trim();
+            string normalizedTitle = NormalizeText(aircraftTitle);
+            string[] titleTokens = Tokenize(normalizedTitle);
 
             AircraftProfile bestProfile = null;
             int bestScore = int.MinValue;
 
             foreach (AircraftProfile profile in profiles)
             {
-                if (profile.MatchTerms == null ||
+                if (profile == null ||
+                    profile.MatchTerms == null ||
                     profile.MatchTerms.Length == 0)
                 {
                     continue;
                 }
 
+                int profileBestScore = int.MinValue;
+
                 foreach (string term in profile.MatchTerms)
                 {
-                    if (string.IsNullOrWhiteSpace(term))
-                    {
-                        continue;
-                    }
+                    int matchQuality = GetMatchQuality(
+                        normalizedTitle,
+                        titleTokens,
+                        term);
 
-                    if (normalizedTitle.IndexOf(
-                            term,
-                            StringComparison.OrdinalIgnoreCase) < 0)
+                    if (matchQuality <= 0)
                     {
                         continue;
                     }
 
                     /*
-                     * Les termes longs et les profils prioritaires gagnent.
-                     * Cela évite qu'un A321LR soit pris pour un A320 générique,
-                     * ou qu'un 747 Supertanker soit pris pour un 747-8.
+                     * Le score privilégie :
+                     * 1. la qualité réelle de la correspondance ;
+                     * 2. la priorité du profil ;
+                     * 3. les alias les plus précis et les plus longs.
                      */
                     int score =
-                        profile.MatchPriority * 1000 +
-                        term.Length;
+                        matchQuality * 100000 +
+                        profile.MatchPriority * 100 +
+                        NormalizeText(term).Length;
 
-                    if (score > bestScore)
+                    if (score > profileBestScore)
                     {
-                        bestScore = score;
-                        bestProfile = profile;
+                        profileBestScore = score;
                     }
+                }
+
+                /*
+                 * Bonus léger lorsque le constructeur apparaît aussi dans
+                 * le titre SimConnect. Il ne crée jamais une correspondance
+                 * à lui seul.
+                 */
+                if (profileBestScore > int.MinValue &&
+                    ContainsTokenSequence(
+                        titleTokens,
+                        Tokenize(NormalizeText(profile.Manufacturer))))
+                {
+                    profileBestScore += 25;
+                }
+
+                if (profileBestScore > bestScore)
+                {
+                    bestScore = profileBestScore;
+                    bestProfile = profile;
                 }
             }
 
             return bestProfile;
+        }
+
+        private static int GetMatchQuality(
+            string normalizedTitle,
+            string[] titleTokens,
+            string term)
+        {
+            if (string.IsNullOrWhiteSpace(term))
+            {
+                return 0;
+            }
+
+            string normalizedTerm = NormalizeText(term);
+
+            if (normalizedTerm.Length == 0)
+            {
+                return 0;
+            }
+
+            string[] termTokens = Tokenize(normalizedTerm);
+
+            if (termTokens.Length == 0)
+            {
+                return 0;
+            }
+
+            // Le titre complet correspond exactement à l'alias.
+            if (string.Equals(
+                normalizedTitle,
+                normalizedTerm,
+                StringComparison.Ordinal))
+            {
+                return 100;
+            }
+
+            // L'alias apparaît comme une véritable suite de mots/tokens.
+            if (ContainsTokenSequence(titleTokens, termTokens))
+            {
+                return termTokens.Length > 1 ? 90 : 80;
+            }
+
+            /*
+             * Accepte les différences de séparateurs :
+             * PC-6 / PC6, C-17 / C17, A320 NEO / A320neo.
+             *
+             * Seuls des tokens complets et adjacents sont concaténés.
+             * Ainsi, "C17" ne correspond jamais à "C172SP".
+             */
+            if (ContainsConcatenatedTokenSequence(titleTokens, termTokens))
+            {
+                return termTokens.Length > 1 ? 85 : 75;
+            }
+
+            return 0;
+        }
+
+        private static string NormalizeText(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return string.Empty;
+            }
+
+            char[] characters = value
+                .Trim()
+                .ToUpperInvariant()
+                .ToCharArray();
+
+            for (int index = 0; index < characters.Length; index++)
+            {
+                if (!char.IsLetterOrDigit(characters[index]))
+                {
+                    characters[index] = ' ';
+                }
+            }
+
+            return string.Join(
+                " ",
+                new string(characters)
+                    .Split(
+                        new[] { ' ' },
+                        StringSplitOptions.RemoveEmptyEntries));
+        }
+
+        private static string[] Tokenize(string normalizedValue)
+        {
+            if (string.IsNullOrWhiteSpace(normalizedValue))
+            {
+                return new string[0];
+            }
+
+            return normalizedValue.Split(
+                new[] { ' ' },
+                StringSplitOptions.RemoveEmptyEntries);
+        }
+
+        private static bool ContainsTokenSequence(
+            string[] titleTokens,
+            string[] termTokens)
+        {
+            if (titleTokens == null ||
+                termTokens == null ||
+                titleTokens.Length == 0 ||
+                termTokens.Length == 0 ||
+                termTokens.Length > titleTokens.Length)
+            {
+                return false;
+            }
+
+            for (int start = 0;
+                start <= titleTokens.Length - termTokens.Length;
+                start++)
+            {
+                bool allTokensMatch = true;
+
+                for (int offset = 0;
+                    offset < termTokens.Length;
+                    offset++)
+                {
+                    if (!string.Equals(
+                        titleTokens[start + offset],
+                        termTokens[offset],
+                        StringComparison.Ordinal))
+                    {
+                        allTokensMatch = false;
+                        break;
+                    }
+                }
+
+                if (allTokensMatch)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static bool ContainsConcatenatedTokenSequence(
+            string[] titleTokens,
+            string[] termTokens)
+        {
+            if (titleTokens == null ||
+                termTokens == null ||
+                titleTokens.Length == 0 ||
+                termTokens.Length == 0)
+            {
+                return false;
+            }
+
+            string compactTerm = string.Concat(termTokens);
+
+            /*
+             * Examine toutes les suites de tokens adjacents.
+             * Une égalité complète est obligatoire : aucune sous-chaîne.
+             */
+            for (int start = 0; start < titleTokens.Length; start++)
+            {
+                string compactCandidate = string.Empty;
+
+                for (int end = start; end < titleTokens.Length; end++)
+                {
+                    compactCandidate += titleTokens[end];
+
+                    if (compactCandidate.Length > compactTerm.Length)
+                    {
+                        break;
+                    }
+
+                    if (string.Equals(
+                        compactCandidate,
+                        compactTerm,
+                        StringComparison.Ordinal))
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
         }
 
         public AircraftProfile GetDefaultProfile()
