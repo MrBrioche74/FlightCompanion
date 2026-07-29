@@ -6,6 +6,7 @@ using System.Windows.Media;
 using FlightCompanion.NetFramework.Calculators;
 using FlightCompanion.NetFramework.Models;
 using FlightCompanion.NetFramework.Services;
+using FlightCompanion.NetFramework.FlightPhases;
 
 namespace FlightCompanion.NetFramework
 {
@@ -20,6 +21,9 @@ namespace FlightCompanion.NetFramework
         private AircraftProfileService aircraftProfileService;
         private AircraftProfile currentAircraftProfile;
 
+        private FlightPhaseService flightPhaseService;
+        private FlightPhase currentPhase = FlightPhase.Unknown;
+
         /*
          * Empêche l'événement TextChanged de relancer inutilement
          * le calcul lorsque l'application remplit la distance GPS.
@@ -32,6 +36,9 @@ namespace FlightCompanion.NetFramework
 
             aircraftProfileService =
                 new AircraftProfileService();
+
+            flightPhaseService =
+                new FlightPhaseService();
 
             SourceInitialized +=
                 MainWindow_SourceInitialized;
@@ -138,6 +145,12 @@ namespace FlightCompanion.NetFramework
             AircraftProfileText.Text =
                 "Profil : ---";
 
+            FlightPhaseText.Text =
+                "Phase : ---";
+
+            FlightPhaseText.Foreground =
+                Brushes.Gray;
+
             FlightPlanStatusText.Text =
                 "Plan actif : ---";
 
@@ -211,6 +224,9 @@ namespace FlightCompanion.NetFramework
             UpdateAircraftProfile(
                 flightData);
 
+            UpdateFlightPhase(
+                flightData);
+
             UpdateGpsDisplay(
                 flightData);
 
@@ -277,6 +293,112 @@ namespace FlightCompanion.NetFramework
                     currentAircraftProfile.ApproachSpeed,
                     currentAircraftProfile
                         .RecommendedDescentRate);
+        }
+
+        private void UpdateFlightPhase(
+            FlightData flightData)
+        {
+            if (flightPhaseService == null)
+            {
+                return;
+            }
+
+            FlightPhase phase =
+                flightPhaseService.GetCurrentPhase(
+                    flightData);
+
+            if (phase == currentPhase)
+            {
+                return;
+            }
+
+            currentPhase = phase;
+
+            FlightPhaseText.Text =
+                "Phase : " +
+                GetFlightPhaseLabel(phase);
+
+            switch (phase)
+            {
+                case FlightPhase.Parking:
+                    FlightPhaseText.Foreground =
+                        Brushes.Gray;
+                    break;
+
+                case FlightPhase.Taxi:
+                    FlightPhaseText.Foreground =
+                        Brushes.Orange;
+                    break;
+
+                case FlightPhase.Takeoff:
+                    FlightPhaseText.Foreground =
+                        Brushes.DeepSkyBlue;
+                    break;
+
+                case FlightPhase.Climb:
+                    FlightPhaseText.Foreground =
+                        Brushes.LimeGreen;
+                    break;
+
+                case FlightPhase.Cruise:
+                    FlightPhaseText.Foreground =
+                        Brushes.Lime;
+                    break;
+
+                case FlightPhase.Descent:
+                    FlightPhaseText.Foreground =
+                        Brushes.Gold;
+                    break;
+
+                case FlightPhase.Approach:
+                    FlightPhaseText.Foreground =
+                        Brushes.OrangeRed;
+                    break;
+
+                case FlightPhase.Landing:
+                    FlightPhaseText.Foreground =
+                        Brushes.Red;
+                    break;
+
+                default:
+                    FlightPhaseText.Foreground =
+                        Brushes.White;
+                    break;
+            }
+        }
+
+        private string GetFlightPhaseLabel(
+            FlightPhase phase)
+        {
+            switch (phase)
+            {
+                case FlightPhase.Parking:
+                    return "PARKING";
+
+                case FlightPhase.Taxi:
+                    return "TAXI";
+
+                case FlightPhase.Takeoff:
+                    return "DÉCOLLAGE";
+
+                case FlightPhase.Climb:
+                    return "MONTÉE";
+
+                case FlightPhase.Cruise:
+                    return "CROISIÈRE";
+
+                case FlightPhase.Descent:
+                    return "DESCENTE";
+
+                case FlightPhase.Approach:
+                    return "APPROCHE";
+
+                case FlightPhase.Landing:
+                    return "ATTERRISSAGE";
+
+                default:
+                    return "INCONNUE";
+            }
         }
 
         private void UpdateGpsDisplay(

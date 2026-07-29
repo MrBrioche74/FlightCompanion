@@ -94,6 +94,9 @@
       <SubType>Designer</SubType>
     </ApplicationDefinition>
     <Compile Include="Calculators\TodCalculator.cs" />
+    <Compile Include="FlightPhases\FlightPhase.cs" />
+    <Compile Include="FlightPhases\FlightPhaseService.cs" />
+    <Compile Include="Models\AircraftCategory.cs" />
     <Compile Include="Models\AircraftProfile.cs" />
     <Compile Include="Services\AircraftProfileService.cs" />
     <Compile Include="Services\SimConnectService.cs" />
