@@ -29,3 +29,6 @@ Desktop.ini
 
 # SimConnect SDK (à installer localement)
 FlightCompanion/lib/Microsoft.FlightSimulator.SimConnect.dll
+
+FlightCompanion-v1.0.0/
+*.zip
